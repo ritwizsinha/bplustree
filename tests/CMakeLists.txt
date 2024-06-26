@@ -1,7 +1,6 @@
 # Test executable
 add_executable(bplustreetest
-bplustree.t.cpp
-splitinternalnode.t.cpp
+page.t.cpp
 )
 
 target_compile_options(bplustreetest PUBLIC -g)

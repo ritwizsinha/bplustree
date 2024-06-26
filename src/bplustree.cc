@@ -6,6 +6,9 @@ namespace ds {
 
     using std::cout;
     using std::endl;
+    using std::lower_bound;
+    using std::distance;
+
     BplusTree::BplusTree(const int &degree):
     max_keys(2*degree - 1),
     min_keys(degree - 1),
@@ -22,11 +25,8 @@ namespace ds {
         return root;
     }
     auto BplusTree::getIndexForKey(const int &key, Node* cur) const -> int {
-        int index = 0;
-        while(index < cur->keys.size() && key > cur->keys[index]) index++;
-        if (index < cur->keys.size() && cur->keys[index] == key) index++;
-
-        return index;
+        auto itr = lower_bound(begin(cur->keys), end(cur->keys), key);
+        return distance(itr, begin(cur->keys));
 
     }
     auto BplusTree::getLeafNodeForValue(const int &key, Node* cur) -> Node* {
@@ -70,12 +70,12 @@ namespace ds {
             auto pseudoRoot = new Node(false, {}, {root}, {});
             pseudoRoot->splitLeafNode(0, max_keys);
 
-            std::cout << "Max Keys "<< max_keys<< " For pseudoRoot keys ";
-            for(auto &key : pseudoRoot->keys) cout << key <<" ";
-            cout << endl;
-            cout << "For root keys ";
-            for(auto &key: root->keys) cout << key << " ";
-            cout<<endl; 
+            // std::cout << "Max Keys "<< max_keys<< " For pseudoRoot keys ";
+            // for(auto &key : pseudoRoot->keys) cout << key <<" ";
+            // cout << endl;
+            // cout << "For root keys ";
+            // for(auto &key: root->keys) cout << key << " ";
+            // cout<<endl; 
             root = pseudoRoot;
             return;
         }
