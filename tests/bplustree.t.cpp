@@ -67,5 +67,4 @@ TEST_F(SetupBtree, TestSearches) {
     for(int i = 1 ; i < 1e6; i++) {
         EXPECT_EQ(i * factor, b->get(i));
     }
-
 }

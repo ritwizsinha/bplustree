@@ -90,3 +90,20 @@ TEST(PAGE, DOUBLE_INSERT_FIND_VALUE)
         EXPECT_EQ(p.find(k[i]), v[i]) << k[i] <<" " << v[i];
     }
 }
+
+TEST(PAGE, STRUCT_INSERT_FIND_VALUE)
+{
+    typedef std::array<char, 4> char4;
+    typedef std::array<char, 10> char10;
+    char memory_area[1000];
+    char4 x = {"abc"};
+    char10 y = {"dasdfsdf"};
+    Page<char4, char10> p(reinterpret_cast<void*>(&memory_area), 1000, PageType::KEY_VALUE);
+    auto success = p.insertData(x, y);
+    EXPECT_TRUE(success);
+
+    auto result = p.find(x);
+    EXPECT_TRUE(result.has_value());
+    EXPECT_EQ(result.value(), y);
+
+}

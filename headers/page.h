@@ -5,6 +5,7 @@
 #include <cstring>
 #include <cassert>
 #include <iostream>
+#include <concepts>
 
 typedef void * LOCATION;
 enum class PageType
@@ -38,6 +39,10 @@ namespace utils
         return 2 * sizeof(size_t) + sizeof(Key) + sizeof(Value);
     }
 }
+template<typename T>
+concept HasGreaterThan = requires(T a, T b) {
+    { a > b } -> std::convertible_to<bool>;
+};
 
 template<typename Key, typename Value>
 struct Page
@@ -55,6 +60,37 @@ struct Page
         header.total = 0;
         base = l;
     }
+    
+    auto getKeyForLinePointer(const LinePointer* lp) -> const Key*
+    {
+        if(!lp->filled) return nullptr;
+        return reinterpret_cast<Key*>(base + lp->offset + 2 * sizeof(size_t));
+    }
+
+    auto make_space_line_pointer(const Key& k, const LinePointer& lp) -> void
+    {
+        auto line_pointer_storage_loc = base + header.pd_lower;
+        memcpy(line_pointer_storage_loc, &lp, sizeof(LinePointer));
+
+        if constexpr (HasGreaterThan<Key>)
+        {
+            for (auto offset = header.pd_lower - sizeof(LinePointer); offset >= header.lp_start; offset -= sizeof(LinePointer))
+            {
+                auto cur = reinterpret_cast<LinePointer*>(base + offset);
+                const auto key = getKeyForLinePointer(cur);
+                const auto nextKey = getKeyForLinePointer(cur + 1);
+                if (*key < *nextKey) {
+                    LinePointer tmp;
+                    memcpy(&tmp, base + offset, sizeof(LinePointer));
+                    memcpy(base + offset, base+offset + sizeof(LinePointer), sizeof(LinePointer));
+                    memcpy(base + offset + sizeof(LinePointer), &tmp, sizeof(LinePointer));
+                }
+            }
+        }
+        
+        header.pd_lower += sizeof(LinePointer);
+    }
+
     auto insertData(const Key& k, const Value& v) -> bool
     {
         // Calculate payload size
@@ -67,8 +103,7 @@ struct Page
         // Store the offset in a new cell pointer
         auto offset = header.pd_upper - payload_size;
         LinePointer lp{offset, true};
-        memcpy(base + header.pd_lower, &lp, sizeof(LinePointer));
-        header.pd_lower += sizeof(LinePointer);
+        make_space_line_pointer(k, lp);
         // Start storing the data in the cell data
         memcpy(base + offset, &KeySize, sizeof(size_t));
         offset += sizeof(size_t);
@@ -97,43 +132,6 @@ struct Page
 
         return std::nullopt;
     }
-
-    // auto insertLinePointer(const size_t &offset) {
-    //     LinePointer lp{offset, true};
-    //     memcpy(cellLocations, &lp, sizeof(lp));
-    //     cellLocations += 1;
-    // }
-
-    // template<typename Key>
-    // auto insert(const Key& k) -> bool
-    // {
-    //     const auto KeySize = sizeof(Key);
-    //     const auto data_chunk_size = sizeof(size_t) + sizeof(Key);
-    //     if (header.pd_lower + data_chunk_size > header.pd_upper) return false;
-    //     const auto copy_to = data - data_chunk_size;
-    //     const auto offset = header.pd_upper - data_chunk_size;
-    //     memcpy(data, &KeySize, sizeof(KeySize));
-    //     memcpy(data + (sizeof(KeySize)), &Key, KeySize);
-    // }
-    // template<typename Key>
-    // auto find(const Key& key) -> size_t
-    // {
-    //     auto runningPtr = cellLocations;
-    //     while(reinterpret_cast<void*>(runningPtr) - base < header.pd_lower)
-    //     {
-    //         auto currentKey = getKeyFromOffset(runningPtr->offset);
-    //         if (*currentKey == key) return cellLocations - runningPtr;
-    //         runningPtr++;
-    //     }
-
-    //     return -1;
-    // }
-
-    // template<typename Key>
-    // auto getKeyFromOffset(const size_t& offset) -> Key*
-    // {
-    //     return reinterpret_cast<Key*>(base + offset + 2 * sizeof(size_t));
-    // }
 
 };
 
