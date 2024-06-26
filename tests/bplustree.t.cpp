@@ -1,17 +1,18 @@
 #include <gtest/gtest.h>
+#include <chrono>
 #include "bplustree.h"
 
 using namespace ds;
+double factor = 3/2;
 class SetupBtree : public ::testing::Test {
     protected:
     BplusTree *b;
 
     void SetUp() override {
-        b = new BplusTree(2);
-        b->insert(1,1);
-        b->insert(2,2);
-        b->insert(3,3);
-        b->insert(4,4);
+        b = new BplusTree(100);
+        for(int i = 1; i < 1e6; i++) {
+            b->insert(i, i * factor);
+        }
     }
 
     void TearDown() override {
@@ -63,8 +64,8 @@ TEST(BPLUSTREEINSERTION, INSERTING) {
 }
 
 TEST_F(SetupBtree, TestSearches) {
-    EXPECT_EQ(1, b->get(1));
-    EXPECT_EQ(2, b->get(2));
-    EXPECT_EQ(3, b->get(3));
-    EXPECT_EQ(4, b->get(4));
+    for(int i = 1 ; i < 1e6; i++) {
+        EXPECT_EQ(i * factor, b->get(i));
+    }
+
 }

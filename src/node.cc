@@ -17,7 +17,7 @@ namespace ds {
         ): leaf(is_leaf), keys(keys), children(children), values(values) {};
 
     auto Node::splitInternalNode(const int childNodeIndex, const int maxKeys) -> void {
-        std::cout <<"Splitting internal nodes" << std::endl;
+        // std::cout <<"Splitting internal nodes" << std::endl;
         if (keys.size() <= maxKeys) return;
         // Check if the child node has more than required keys
         auto newNode = new Node();
@@ -31,7 +31,7 @@ namespace ds {
 
         // update the left pointer and right pointer for the inserted key
         for(int i = middleIdx + 1; i < childNode->keys.size(); i++) {
-            std::cout <<    childNode->keys[i] << std::endl;
+            // std::cout <<    childNode->keys[i] << std::endl;
             newNode->keys.push_back(childNode->keys[i]);
             if (childNode->children.size() > i)
                 newNode->children.push_back(childNode->children[i]);
