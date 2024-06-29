@@ -118,19 +118,38 @@ struct Page
 
     auto find(const Key& k) -> std::optional<Value>
     {
-        for (auto itr = header.lp_start; itr < header.pd_lower; itr += sizeof(LinePointer))
+        auto cellOffset = findCellOffset(k);
+        if (cellOffset <= 0)
+            return std::nullopt;
+        
+        auto lp = reinterpret_cast<LinePointer*>(base + cellOffset);
+        auto cur_key = reinterpret_cast<Key*>(base + lp->offset + 2 * sizeof(size_t));
+
+        const auto keySize = *reinterpret_cast<size_t*>(base + lp->offset);
+        auto value = reinterpret_cast<Value*>(base + lp->offset + 2 * sizeof(size_t) + keySize);
+        return *value;
+    }
+
+    auto remove(const Key& k) -> void
+    {
+        auto cellOffset = findCellOffset(k);
+        if (cellOffset <= 0) return;
+        auto lp = reinterpret_cast<LinePointer*>(base+cellOffset);
+        lp->filled = false;
+    }
+
+
+    auto findCellOffset(const Key& k) -> size_t
+    {
+        for(auto itr = header.lp_start; itr < header.pd_lower; itr+= sizeof(LinePointer))
         {
             auto lp = reinterpret_cast<LinePointer*>(base + itr);
             if (!lp->filled) continue;
             auto cur_key = reinterpret_cast<Key*>(base + lp->offset + 2 * sizeof(size_t));
-            if (*cur_key == k) {
-                const auto keySize = *reinterpret_cast<size_t*>(base + lp->offset);
-                auto value = reinterpret_cast<Value*>(base + lp->offset + 2 * sizeof(size_t) + keySize);
-                return *value;
-            }
+            if (*cur_key == k) return itr;
         }
-
-        return std::nullopt;
+        
+        return 0;
     }
 
 };

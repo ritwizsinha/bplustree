@@ -11,6 +11,8 @@ How can I make access inside pages more effecient ?
 - Apply binary search on cell pointers whenever finding a particular record.
 
 
+## Question 3
+
 ## References
 - [Efficient Locking for Concurrent Operations on B-Trees](https://www.csd.uoc.gr/~hy460/pdf/p650-lehman.pdf)
 - [Database Internals Book](https://www.databass.dev/)

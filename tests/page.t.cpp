@@ -91,19 +91,47 @@ TEST(PAGE, DOUBLE_INSERT_FIND_VALUE)
     }
 }
 
-TEST(PAGE, STRUCT_INSERT_FIND_VALUE)
+TEST(PAGE, CHAR_ARR_INSERT_FIND_VALUE)
 {
     typedef std::array<char, 4> char4;
     typedef std::array<char, 10> char10;
     char memory_area[1000];
-    char4 x = {"abc"};
-    char10 y = {"dasdfsdf"};
+    char4 x = {"abc"}, xx = {"ufi"};
+    char10 y = {"dasdfsdf"}, yy = {"dsewr"};
     Page<char4, char10> p(reinterpret_cast<void*>(&memory_area), 1000, PageType::KEY_VALUE);
     auto success = p.insertData(x, y);
+    EXPECT_TRUE(success);
+    success = p.insertData(xx, yy);
     EXPECT_TRUE(success);
 
     auto result = p.find(x);
     EXPECT_TRUE(result.has_value());
     EXPECT_EQ(result.value(), y);
 
+    result = p.find(xx);
+    EXPECT_TRUE(result.has_value());
+    EXPECT_EQ(result.value(), yy);
+}
+
+
+TEST(PAGE, DELETE_PAGE_ITEM)
+{
+    char memory_area[1000];
+    int x = 4, y = 5;
+
+    Page<int,int> p(reinterpret_cast<void*>(&memory_area), 1000, PageType::KEY_VALUE);
+
+    auto success = p.insertData(x, y);
+    EXPECT_TRUE(success);
+    success = p.insertData(y, x);
+    EXPECT_TRUE(success);
+
+    p.remove(x);
+
+    auto result = p.find(x);
+    EXPECT_FALSE(result.has_value());
+
+    result = p.find(y);
+    EXPECT_TRUE(result.has_value());
+    EXPECT_EQ(result.value(), x);
 }
