@@ -135,3 +135,19 @@ TEST(PAGE, DELETE_PAGE_ITEM)
     EXPECT_TRUE(result.has_value());
     EXPECT_EQ(result.value(), x);
 }
+
+TEST(PAGE, TEST_MULTIPLE_INSERTS_FINDS)
+{
+    char memory_area[1000];
+
+    Page<int, int> p(reinterpret_cast<void*>(&memory_area), 1000, PageType::KEY_VALUE);
+
+    for(int i = 0; i < 10; i++){
+        auto suc = p.insertData(i, 2 * i);
+        EXPECT_TRUE(suc);
+    }
+
+    for(int i = 0; i < 10; i++) {
+        EXPECT_EQ(p.find(i), 2*i);
+    }
+}

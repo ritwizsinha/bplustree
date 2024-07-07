@@ -44,6 +44,22 @@ concept HasGreaterThan = requires(T a, T b) {
     { a > b } -> std::convertible_to<bool>;
 };
 
+template<typename T>
+concept HasOStreamOperator = requires(std::ostream& os, T value) {
+    { os << value } -> std::convertible_to<std::ostream&>;
+};
+
+// Function to output a value if it has an ostream operator
+template<HasOStreamOperator T>
+void output_if_possible(const T& value) {
+    std::cout << value << std::endl;
+}
+
+// Overload for types without an ostream operator (optional)
+void output_if_possible(...) {
+    std::cout << "Type does not have an ostream operator." << std::endl;
+}
+
 template<typename Key, typename Value>
 struct Page
 {
@@ -60,11 +76,28 @@ struct Page
         header.total = 0;
         base = l;
     }
-    
+
+    auto printKeyList()
+    {
+        std::cout << "Starting Print Key List" << std::endl;
+        for(auto i = header.lp_start; i < header.pd_lower; i+=sizeof(LinePointer)){
+            auto lp = findLinePointerFromOffset(i);
+            output_if_possible(*getActiveKeyForLinePointer(lp));
+        }
+    }
+    auto isFull() -> bool
+    {
+        return header.pd_upper - header.pd_lower < 2 * sizeof(size_t) + sizeof(Key) + sizeof(Value);
+    }
+
     auto getKeyForLinePointer(const LinePointer* lp) -> const Key*
     {
-        if(!lp->filled) return nullptr;
         return reinterpret_cast<Key*>(base + lp->offset + 2 * sizeof(size_t));
+    }
+    auto getActiveKeyForLinePointer(const LinePointer* lp) -> const Key*
+    {
+        if(!lp->filled) return nullptr;
+        return getKeyForLinePointer(lp);
     }
 
     auto make_space_line_pointer(const Key& k, const LinePointer& lp) -> void
@@ -74,12 +107,13 @@ struct Page
 
         if constexpr (HasGreaterThan<Key>)
         {
-            for (auto offset = header.pd_lower - sizeof(LinePointer); offset >= header.lp_start; offset -= sizeof(LinePointer))
+            for (auto offset = header.pd_lower - 2 * sizeof(LinePointer); offset >= header.lp_start; offset -= sizeof(LinePointer))
             {
+                if (offset < header.lp_start) continue;
                 auto cur = reinterpret_cast<LinePointer*>(base + offset);
-                const auto key = getKeyForLinePointer(cur);
-                const auto nextKey = getKeyForLinePointer(cur + 1);
-                if (*key < *nextKey) {
+                const auto key = getActiveKeyForLinePointer(cur);
+                const auto nextKey = getActiveKeyForLinePointer(cur + 1);
+                if (*key > *nextKey) {
                     LinePointer tmp;
                     memcpy(&tmp, base + offset, sizeof(LinePointer));
                     memcpy(base + offset, base+offset + sizeof(LinePointer), sizeof(LinePointer));
@@ -93,6 +127,7 @@ struct Page
 
     auto insertData(const Key& k, const Value& v) -> bool
     {
+        // printKeyList();
         // Calculate payload size
         auto payload_size = utils::getStorageSize(k, v);
         const auto KeySize = sizeof(Key);
@@ -138,19 +173,47 @@ struct Page
         lp->filled = false;
     }
 
+    auto findLinePointerFromOffset(const size_t& offset) -> LinePointer*
+    {
+        return reinterpret_cast<LinePointer*>(base + offset);
+    }
 
     auto findCellOffset(const Key& k) -> size_t
     {
-        for(auto itr = header.lp_start; itr < header.pd_lower; itr+= sizeof(LinePointer))
+        auto jumpSize = sizeof(LinePointer);
+        auto totalCells = (header.pd_lower - header.lp_start) / jumpSize;
+        int low = 0, hi = totalCells - 1;
+        auto check = [&](const int index) -> const Key*
         {
-            auto lp = reinterpret_cast<LinePointer*>(base + itr);
-            if (!lp->filled) continue;
-            auto cur_key = reinterpret_cast<Key*>(base + lp->offset + 2 * sizeof(size_t));
-            if (*cur_key == k) return itr;
+            size_t ptr = header.lp_start + index * jumpSize;
+            auto lp = findLinePointerFromOffset(ptr);
+            return getKeyForLinePointer(lp);
+        };
+        while(low <= hi)
+        {
+            auto mid = low + (hi - low) / 2;
+            auto checkResult = check(mid);
+            // std::cout << "Low,Mid,High " << low <<"," << mid << ","  << hi << ", " << std::endl;
+            // output_if_possible(*checkResult);
+            if (*checkResult == k) {
+                auto lp = reinterpret_cast<LinePointer*>(base + header.lp_start + mid * jumpSize);
+                if (!lp->filled)
+                    return 0;
+                return header.lp_start + mid * jumpSize;
+            } 
+            else if (*checkResult < k) low = mid + 1;
+            else if (*checkResult > k) hi = mid - 1;
         }
-        
+
         return 0;
+        
     }
+
+    // auto binarySearch(const Key& k) -> size_t
+    // {
+    //     +
+    //     *
+    // }
 
 };
 
