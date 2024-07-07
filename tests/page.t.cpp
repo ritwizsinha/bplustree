@@ -136,7 +136,7 @@ TEST(PAGE, DELETE_PAGE_ITEM)
     EXPECT_EQ(result.value(), x);
 }
 
-TEST(PAGE, TEST_MULTIPLE_INSERTS_FINDS)
+TEST(PAGE, TEST_MULTIPLE_INSERTS_FINDS_V1)
 {
     char memory_area[1000];
 
@@ -149,5 +149,46 @@ TEST(PAGE, TEST_MULTIPLE_INSERTS_FINDS)
 
     for(int i = 0; i < 10; i++) {
         EXPECT_EQ(p.find(i), 2*i);
+    }
+}
+
+TEST(PAGE, TEST_MULTIPLE_INSERTS_FINDS_V2)
+{
+    char memory_area[1000];
+
+    Page<int, int> p(reinterpret_cast<void*>(&memory_area), 1000, PageType::KEY_VALUE);
+
+    for(int i = 10; i >= 0; i--){
+        auto suc = p.insertData(i, 2 * i);
+        EXPECT_TRUE(suc);
+    }
+
+    for(int i = 0; i < 10; i++) {
+        EXPECT_EQ(p.find(i), 2*i);
+    }
+}
+
+TEST(PAGE, TEST_MIX_INSERTS_DELETES_FINDS_v1) {
+    char memory_area[1000];
+
+    Page<int, int> p(reinterpret_cast<void*>(&memory_area), 1000, PageType::KEY_VALUE);
+
+    for(int i = 10; i > 5; i--) {
+        auto suc = p.insertData(i, 2 * i);
+        EXPECT_TRUE(suc);
+    }
+    for(int i = 6; i <= 10; i++) {
+        EXPECT_EQ(p.find(i), 2 * i);
+        p.remove(i);
+        EXPECT_FALSE(p.find(i).has_value());
+    }
+
+    for(int i = 5; i >= 0; i--) {
+        auto suc = p.insertData(i, 2 * i);
+        EXPECT_TRUE(suc);
+    }
+
+    for(int i = 0; i <= 5; i++) {
+        EXPECT_EQ(p.find(i), 2 * i);
     }
 }

@@ -104,6 +104,7 @@ struct Page
     {
         auto line_pointer_storage_loc = base + header.pd_lower;
         memcpy(line_pointer_storage_loc, &lp, sizeof(LinePointer));
+        header.pd_lower += sizeof(LinePointer);
 
         if constexpr (HasGreaterThan<Key>)
         {
@@ -111,23 +112,21 @@ struct Page
             {
                 if (offset < header.lp_start) continue;
                 auto cur = reinterpret_cast<LinePointer*>(base + offset);
-                const auto key = getActiveKeyForLinePointer(cur);
-                const auto nextKey = getActiveKeyForLinePointer(cur + 1);
-                if (*key > *nextKey) {
-                    LinePointer tmp;
-                    memcpy(&tmp, base + offset, sizeof(LinePointer));
-                    memcpy(base + offset, base+offset + sizeof(LinePointer), sizeof(LinePointer));
-                    memcpy(base + offset + sizeof(LinePointer), &tmp, sizeof(LinePointer));
-                }
+                auto next = reinterpret_cast<LinePointer*>(base + offset + sizeof(LinePointer));
+                const auto key = getKeyForLinePointer(cur);
+                const auto nextKey = getKeyForLinePointer(next);
+                if (*key < *nextKey) break;
+                LinePointer tmp;
+                memcpy(&tmp, base + offset, sizeof(LinePointer));
+                memcpy(base + offset, base+offset + sizeof(LinePointer), sizeof(LinePointer));
+                memcpy(base + offset + sizeof(LinePointer), &tmp, sizeof(LinePointer));
             }
         }
         
-        header.pd_lower += sizeof(LinePointer);
     }
 
     auto insertData(const Key& k, const Value& v) -> bool
     {
-        // printKeyList();
         // Calculate payload size
         auto payload_size = utils::getStorageSize(k, v);
         const auto KeySize = sizeof(Key);
@@ -138,7 +137,6 @@ struct Page
         // Store the offset in a new cell pointer
         auto offset = header.pd_upper - payload_size;
         LinePointer lp{offset, true};
-        make_space_line_pointer(k, lp);
         // Start storing the data in the cell data
         memcpy(base + offset, &KeySize, sizeof(size_t));
         offset += sizeof(size_t);
@@ -148,6 +146,9 @@ struct Page
         offset += KeySize;
         memcpy(base + offset, &v, ValueSize);
         header.pd_upper -= payload_size;
+
+        make_space_line_pointer(k, lp);
+        
         return true;
     }
 
@@ -193,8 +194,6 @@ struct Page
         {
             auto mid = low + (hi - low) / 2;
             auto checkResult = check(mid);
-            // std::cout << "Low,Mid,High " << low <<"," << mid << ","  << hi << ", " << std::endl;
-            // output_if_possible(*checkResult);
             if (*checkResult == k) {
                 auto lp = reinterpret_cast<LinePointer*>(base + header.lp_start + mid * jumpSize);
                 if (!lp->filled)
@@ -209,11 +208,6 @@ struct Page
         
     }
 
-    // auto binarySearch(const Key& k) -> size_t
-    // {
-    //     +
-    //     *
-    // }
 
 };
 
