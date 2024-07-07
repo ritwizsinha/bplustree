@@ -55,12 +55,19 @@ void output_if_possible(const T& value) {
     std::cout << value << std::endl;
 }
 
+template<typename T>
+concept EqualityComparable = requires(T a, T b) {
+    { a == b } -> std::convertible_to<bool>;
+};
+
+template<typename T>
+concept FullyComparable = EqualityComparable<T> && HasGreaterThan<T> && HasOStreamOperator<T>;
 // Overload for types without an ostream operator (optional)
 void output_if_possible(...) {
     std::cout << "Type does not have an ostream operator." << std::endl;
 }
 
-template<typename Key, typename Value>
+template<FullyComparable Key, typename Value>
 struct Page
 {
     LOCATION base;
